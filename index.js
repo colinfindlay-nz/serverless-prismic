@@ -27,7 +27,7 @@ module.exports = function (ServerlessPlugin) {
         registerHooks() {
 
             this.S.addHook(this._prismic.bind(this), {
-                action: 'codeDeployLambda',
+                action: 'functionRunLambdaNodeJs',
                 event: 'pre'
             });
 
@@ -37,8 +37,8 @@ module.exports = function (ServerlessPlugin) {
         _prismic(evt) {
 
             // Get function
-            let func = this.S.state.getFunctions({paths: [evt.options.path]})[0],
-                component = this.S.state.getComponents({component: func._config.component})[0],
+            let func = this.S.state.getFunctions({  paths: [evt.options.path] })[0],
+                component = func.getComponent(),
                 prismicNodejs;
 
             // Skip if not set on component OR function
@@ -82,7 +82,7 @@ module.exports = function (ServerlessPlugin) {
                 repo: "",
                 api_key: null,
                 queries: [],
-                base: _this.evt.options.pathDist
+                base: fs.realpathSync(_this.component._config.fullPath)
             };
             _this.config = _.merge(
                 _this.config,
@@ -133,9 +133,12 @@ module.exports = function (ServerlessPlugin) {
             let config = arguments[0][0],
                 results = arguments[0][1], query = arguments[0][2];
             let name = new Function('result', query.resolver);
+            let output = {};
+            for (var result in results) {
+                output[results[result].uid] = results[result].data;
+            }
             debug("Writing out " + path.join(config.base, name(results)));
-            writefile(path.join(config.base, name(results)), JSON.stringify(results), 'utf8');
-            return;
+            return writefile(path.join(config.base, name(results)), JSON.stringify(output));
             // TODO collections
             //let writers = [];
             //for (var result in results) {
